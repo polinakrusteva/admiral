@@ -55,7 +55,25 @@
     </div>
   </div>
 
-  <div id="destination" class="form-group" v-if="endpoint && endpoint.endpointType === 'vsphere'">
+  <div id="cpuCount" class="form-group"
+       v-if="endpoint && endpoint.endpointType === 'vro' && endpoint.customProperties.provider === 'vsphere'">
+    <label class="required">
+      {{i18n("app.host.details.cpu")}}
+    </label>
+    <input class="form-control" v-model="cpu">
+  </div>
+
+  <div id="memory" class="form-group"
+       v-if="endpoint && endpoint.endpointType === 'vro' && endpoint.customProperties.provider === 'vsphere'">
+    <label class="required">
+      {{i18n("app.host.details.memory")}}
+    </label>
+    <input class="form-control" v-model="memory"
+           v-bind:placeholder="i18n('app.host.details.memoryMbPlaceholder')">
+  </div>
+
+  <div id="destination" class="form-group"
+       v-if="endpoint && endpoint.endpointType === 'vsphere'">
     <label class="required">
       {{i18n('app.host.details.destination')}}
     </label>

@@ -106,7 +106,8 @@
                     {{i18n('app.environment.edit.instanceTypeLabel')}}
                   </label>
                   <div class="form-control">
-                    <multicolumn-inputs v-ref:instance-type v-if="endpointType === 'vsphere'"
+                    <multicolumn-inputs v-ref:instance-type
+                                        v-if="endpointType === 'vsphere'"
                       v-bind:value="instanceTypeValue"
                       v-bind:model="{
                         name: {

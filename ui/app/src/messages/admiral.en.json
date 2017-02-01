@@ -78,6 +78,7 @@
         "regionId": "Region ID",
         "name": "Name",
         "namePlaceholder": "Example: host-name",
+        "memoryMbPlaceholder": "Memory in MB: 1024, 2048...",
         "instanceType": "Instance type",
         "imageType": "OS",
         "port": "Port",
@@ -516,6 +517,7 @@
         "update": "Edit Endpoint",
         "nameLabel": "Name",
         "typeLabel": "Type",
+        "providerTypeLabel": "Provider type",
         "privateKeyIdLabel": "Access key ID",
         "privateKeyLabel": "Secret access key",
         "regionIdLabel": "Region ID",
@@ -528,10 +530,19 @@
           "privateKeyIdLabel": "Username",
           "privateKeyLabel": "Password",
           "regionIdLabel": "Datacenter"
+        },
+        "vro":{
+          "hostNameLabel": "vRO instance IP",
+          "privateKeyIdLabel": "Username",
+          "privateKeyLabel": "Password",
+          "providerHostNameLabel": "Host name or IP",
+          "providerPrivateKeyIdLabel": "Provider username",
+          "providerPrivateKeyLabel": "Provider password"
         }
       },
       "entity": "endpoint",
       "typeEntity": "type",
+      "providerTypeEntity": "Provider Type",
       "datacenterEntity": "datacenter",
       "createNew": "New Endpoint",
       "manage": "Manage Endpoints",

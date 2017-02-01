@@ -18,6 +18,7 @@ import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSAdapters;
 import com.vmware.photon.controller.model.adapters.azure.AzureAdapters;
 import com.vmware.photon.controller.model.adapters.registry.PhotonModelAdaptersRegistryAdapters;
+import com.vmware.photon.controller.model.adapters.vro.VROAdapters;
 import com.vmware.photon.controller.model.adapters.vsphere.VSphereAdapters;
 import com.vmware.photon.controller.model.resources.ResourceState;
 import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
@@ -83,6 +84,14 @@ public class HostInitPhotonModelServiceConfig {
             host.log(Level.WARNING, "Exception staring vSphere adapters: %s",
                     Utils.toString(e));
         }
+
+        // vro adapters:
+        try {
+            VROAdapters.startServices(host);
+        } catch (Throwable e) {
+            host.log(Level.WARNING, "Exception starting vRO adapters: %s", Utils.toString(e));
+        }
+
     }
 
 }

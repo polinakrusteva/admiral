@@ -16,6 +16,7 @@ import AwsEndpointEditor from 'components/endpoints/aws/EndpointEditor'; //eslin
 import AzureEndpointEditor from 'components/endpoints/azure/EndpointEditor'; //eslint-disable-line
 import NimbusEndpointEditor from 'components/endpoints/nimbus/EndpointEditor'; //eslint-disable-line
 import VsphereEndpointEditor from 'components/endpoints/vsphere/EndpointEditor'; //eslint-disable-line
+import VroEndpointEditor from 'components/endpoints/vro/EndpointEditor'; //eslint-disable-line
 import EndpointEditorVue from 'components/endpoints/EndpointEditorVue.html';
 import { EndpointsActions } from 'actions/Actions';
 import utils from 'core/utils';
@@ -36,6 +37,11 @@ const OOTB_TYPES = [
     id: 'vsphere',
     name: 'vSphere',
     iconSrc: 'image-assets/endpoints/vsphere.png'
+  },
+  {
+    id: 'vro',
+    name: 'vRO',
+    iconSrc: 'image-assets/endpoints/vro.png'
   }
 ];
 
@@ -160,6 +166,7 @@ export default Vue.component('endpoint-editor', {
       endpointType: this.model.item.endpointType,
       name: this.model.item.name,
       properties: this.model.item.endpointProperties || {},
+      customProperties: this.model.item.customProperties || {},
       propertiesErrors: null,
       saveDisabled: !this.model.item.documentSelfLink,
       supportedEditors: [],
@@ -192,7 +199,16 @@ export default Vue.component('endpoint-editor', {
     },
     onPropertiesChange(properties) {
       this.properties = properties;
+      if (this.endpointType === 'vro') {
+        this.onCustomPropertiesChange(properties);
+      }
       this.saveDisabled = this.isSaveDisabled();
+    },
+    onCustomPropertiesChange(properties) {
+      this.customProperties.provider = properties.providerType;
+      this.customProperties.providerHostname = properties.providerHostName;
+      this.customProperties.providerPrivateKeyId = properties.providerPrivateKeyId;
+      this.customProperties.providerPrivateKey = properties.providerPrivateKey;
     },
     onPropertiesError(errors) {
       this.propertiesErrors = errors;
@@ -203,7 +219,8 @@ export default Vue.component('endpoint-editor', {
         return true;
       }
       let properties = model.endpointProperties;
-      if (!properties.privateKeyId || !properties.privateKey || !properties.regionId) {
+      //removed regionId
+      if (!properties.privateKeyId || !properties.privateKey) {
         return true;
       }
       if (model.endpointType === 'azure' && (!properties.userLink || !properties.azureTenantId)) {
@@ -212,11 +229,16 @@ export default Vue.component('endpoint-editor', {
       if (model.endpointType === 'vsphere' && !properties.hostName) {
           return true;
       }
+      if (model.endpointType === 'vro' && !properties.providerHostName && !properties
+      .providerPrivateKeyId && !properties.providerPrivateKey) {
+          return true;
+      }
       return false;
     },
     getModel() {
       return $.extend({}, this.model.item, {
         endpointProperties: $.extend(this.model.item.endpointProperties || {}, this.properties),
+        customProperties: $.extend(this.model.item.customProperties || {}, this.customProperties),
         endpointType: this.endpointType,
         name: this.name
       });

@@ -11,8 +11,6 @@
 
 package com.vmware.admiral.request;
 
-import static com.vmware.admiral.common.util.AssertUtil.assertNotEmpty;
-import static com.vmware.admiral.common.util.AssertUtil.assertTrue;
 import static com.vmware.admiral.common.util.PropertyUtils.mergeCustomProperties;
 import static com.vmware.admiral.request.utils.RequestUtils.FIELD_NAME_ALLOCATION_REQUEST;
 import static com.vmware.admiral.request.utils.RequestUtils.FIELD_NAME_CONTEXT_ID_KEY;
@@ -56,6 +54,7 @@ import com.vmware.admiral.compute.container.ContainerService.ContainerState;
 import com.vmware.admiral.compute.container.ContainerService.ContainerState.PowerState;
 import com.vmware.admiral.compute.container.GroupResourcePlacementService.GroupResourcePlacementState;
 import com.vmware.admiral.compute.container.HealthChecker;
+import com.vmware.admiral.compute.container.PortBinding;
 import com.vmware.admiral.compute.container.ServiceNetwork;
 import com.vmware.admiral.compute.content.ServiceLinkSerializer;
 import com.vmware.admiral.request.ContainerAllocationTaskService.ContainerAllocationTaskState.SubStage;
@@ -71,6 +70,7 @@ import com.vmware.admiral.service.common.ServiceTaskCallback;
 import com.vmware.admiral.service.common.ServiceTaskCallback.ServiceTaskCallbackResponse;
 import com.vmware.admiral.service.common.TaskServiceDocument;
 import com.vmware.xenon.common.DeferredResult;
+import com.vmware.xenon.common.LocalizableValidationException;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.UriUtils;
@@ -248,15 +248,26 @@ public class ContainerAllocationTaskService
     @Override
     protected void validateStateOnStart(ContainerAllocationTaskState state) {
         if (state.postAllocation) {
-            assertNotEmpty(state.resourceLinks, "resourceLinks");
-            assertTrue(state.resourceCount <= state.resourceLinks.size(),
-                    "Resource count must be equal to number of resources during post allocation.");
+            if (state.resourceLinks == null || state.resourceLinks.isEmpty()) {
+                throw new LocalizableValidationException("'resourceLinks' must not be empty",
+                        "request.container.allocation.resources.empty");
+            }
+
+            if (state.resourceCount > state.resourceLinks.size()) {
+                throw new LocalizableValidationException("Resource count must be equal to number of resources during post allocation.",
+                        "request.container.allocation.resource.count");
+            }
+
         } else {
-            assertNotEmpty(state.groupResourcePlacementLink, "groupResourcePlacementLink");
+            if (state.groupResourcePlacementLink == null || state.groupResourcePlacementLink.isEmpty()) {
+                throw new LocalizableValidationException("'groupResourcePlacementLink' must not be empty",
+                        "request.container.allocation.group.empty");
+            }
         }
 
         if (state.resourceCount < 1) {
-            throw new IllegalArgumentException("'resourceCount' must be greater than 0.");
+            throw new LocalizableValidationException("'resourceCount' must be greater than 0.",
+                    "request.resource-count.zero");
         }
     }
 
@@ -300,8 +311,8 @@ public class ContainerAllocationTaskService
 
     private void proceedAfterHostSelection(ContainerAllocationTaskState state) {
         if (!state.postAllocation && state.hostSelections == null && state.resourceNames == null) {
-            failTask(null, new IllegalStateException(
-                    "computeHostLink and resourceNames can't be null at this state"));
+            failTask(null, new LocalizableValidationException(
+                    "computeHostLink and resourceNames can't be null at this state", "request.container.allocation.host.missing"));
         } else if (state.postAllocation
                 || (state.hostSelections != null && state.resourceNames != null)) {
 
@@ -413,7 +424,8 @@ public class ContainerAllocationTaskService
     private void selectPlacementComputeHost(ContainerAllocationTaskState state,
             String resourcePoolLink) {
         if (!state.postAllocation && state.resourceNames == null || state.resourceNames.isEmpty()) {
-            failTask(null, new IllegalStateException("resource names expected at this stage."));
+            failTask(null, new LocalizableValidationException("resource names expected at this stage.",
+                    "request.container.allocation.resource-names.missing"));
             return;
         }
         if (resourcePoolLink == null) {
@@ -460,8 +472,8 @@ public class ContainerAllocationTaskService
                     GroupResourcePlacementState placementState = o
                             .getBody(GroupResourcePlacementState.class);
                     if (placementState.resourcePoolLink == null) {
-                        failTask(null, new IllegalStateException(
-                                "Placement state has no resourcePoolLink"));
+                        failTask(null, new LocalizableValidationException(
+                                "Placement state has no resourcePoolLink", "request.container.allocation.missing.resource-pool"));
                         return;
                     }
                     callbackFunction.accept(placementState.resourcePoolLink);
@@ -660,7 +672,8 @@ public class ContainerAllocationTaskService
             containerState.volumes = mapVolumes(containerDesc, hostSelection);
             containerState.networks = mapNetworks(containerDesc, hostSelection);
             if (containerDesc.portBindings != null) {
-                containerState.ports = Arrays.asList(containerDesc.portBindings);
+                containerState.ports = new ArrayList<PortBinding>(
+                        Arrays.asList(containerDesc.portBindings));
             }
 
             if (containerState.networks != null && !containerState.networks.isEmpty()) {

@@ -15,7 +15,6 @@ import VueTextInput from 'components/common/VueTextInput'; //eslint-disable-line
 import AwsEndpointEditor from 'components/endpoints/aws/EndpointEditor'; //eslint-disable-line
 import AzureEndpointEditor from 'components/endpoints/azure/EndpointEditor'; //eslint-disable-line
 import NimbusEndpointEditor from 'components/endpoints/nimbus/EndpointEditor'; //eslint-disable-line
-import OpenstackEndpointEditor from 'components/endpoints/openstack/EndpointEditor'; //eslint-disable-line
 import VsphereEndpointEditor from 'components/endpoints/vsphere/EndpointEditor'; //eslint-disable-line
 import VroEndpointEditor from 'components/endpoints/vro/EndpointEditor'; //eslint-disable-line
 import EndpointEditorVue from 'components/endpoints/EndpointEditorVue.html';
@@ -48,7 +47,7 @@ const OOTB_TYPES = [
 
 var externalAdapters = null;
 
-var loadExternalTypes = function() {
+var loadExternalAdapters = function() {
   return services.loadAdapters().then((adapters) => {
     externalAdapters = [];
     if (adapters) {
@@ -65,17 +64,47 @@ var loadExternalTypes = function() {
           icon = icon.substring(1);
         }
 
+        var uiLink = doc.customProperties && doc.customProperties.uiLink;
+        if (uiLink && uiLink[0] === '/') {
+          // Remove slash, as UI is not always served at /, e.g. in CAFE embedded.
+          // So instead use relative path.
+          uiLink = uiLink.substring(1);
+        }
+
+        var endpointEditor = doc.customProperties && doc.customProperties.endpointEditor;
+
         externalAdapters.push({
           id: doc.id,
           name: doc.name,
-          iconSrc: icon
+          iconSrc: icon,
+          uiLink: uiLink,
+          endpointEditor: endpointEditor
         });
       }
     }
+
+    return Promise.all(externalAdapters.map(({uiLink}) =>
+        services.loadScript(uiLink)));
   });
 };
 
-var getAvailableAdapters = function() {
+var getSupportedEditors = function() {
+  let supportedEditors = [
+    'aws-endpoint-editor',
+    'azure-endpoint-editor',
+    'vsphere-endpoint-editor'
+  ];
+  if (utils.isNimbusEnabled()) {
+    supportedEditors.push('nimbus-endpoint-editor');
+  }
+  if (externalAdapters) {
+    supportedEditors = supportedEditors.concat(
+        externalAdapters.map(({endpointEditor}) => endpointEditor));
+  }
+  return supportedEditors;
+};
+
+var getSupportedTypes = function() {
   let supportedTypes = OOTB_TYPES.slice();
   if (utils.isNimbusEnabled()) {
     supportedTypes.push({
@@ -104,8 +133,9 @@ export default Vue.component('endpoint-editor', {
           (this.propertiesErrors && this.propertiesErrors._generic);
     }
   },
-  attached: function() {
-    let supportedTypes = getAvailableAdapters();
+  attached() {
+    let supportedEditors = getSupportedEditors();
+    let supportedTypes = getSupportedTypes();
 
     if (!externalAdapters) {
       if (utils.isExternalPhotonAdaptersEnabled()) {
@@ -116,17 +146,20 @@ export default Vue.component('endpoint-editor', {
         };
 
         supportedTypes.push(loading);
-        loadExternalTypes().then(() => {
-          this.supportedEndpointTypes = getAvailableAdapters();
+        loadExternalAdapters().then(() => {
+          this.supportedEditors = getSupportedEditors();
+          this.supportedTypes = getSupportedTypes();
         }).catch(() => {
-          this.supportedEndpointTypes = getAvailableAdapters();
+          this.supportedEditors = getSupportedEditors();
+          this.supportedTypes = getSupportedTypes();
         });
       } else {
         externalAdapters = [];
       }
     }
 
-    this.supportedEndpointTypes = supportedTypes;
+    this.supportedEditors = supportedEditors;
+    this.supportedTypes = supportedTypes;
   },
   data() {
     return {
@@ -136,7 +169,8 @@ export default Vue.component('endpoint-editor', {
       customProperties: this.model.item.customProperties || {},
       propertiesErrors: null,
       saveDisabled: !this.model.item.documentSelfLink,
-      supportedEndpointTypes: []
+      supportedEditors: [],
+      supportedTypes: []
     };
   },
   methods: {

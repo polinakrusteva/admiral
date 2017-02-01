@@ -11,10 +11,6 @@
 
 package com.vmware.admiral.request.allocation.filter;
 
-import static com.vmware.admiral.request.allocation.filter.AffinityConstraint.AffinityConstraintType.ANTI_AFFINITY_PREFIX;
-import static com.vmware.admiral.request.allocation.filter.AffinityConstraint.AffinityConstraintType.HARD;
-import static com.vmware.admiral.request.allocation.filter.AffinityConstraint.AffinityConstraintType.SOFT;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -90,7 +86,8 @@ public class ServiceAffinityHostFilter extends BaseAffinityHostFilter {
             final String errMsg = String.format(
                     "No containers found for filter [%s] and value of [%s] for contextId [%s].",
                     affinityPropertyName, getAffinity(), state.contextId);
-            throw new HostSelectionFilterException(errMsg);
+            throw new HostSelectionFilterException(errMsg, "request.service.affinity.filter.no.containers",
+                    affinityPropertyName, getAffinity(), state.contextId);
 
         } else if (filteredHostSelectionMap.isEmpty() && !hasOutgoingAffinities()) {
             return initHostSelectionMap;
@@ -104,7 +101,8 @@ public class ServiceAffinityHostFilter extends BaseAffinityHostFilter {
                 final String errMsg = String
                         .format("Container host selection size [%s] based on filter: [links] with values: [%s] and contextId [%s] is not expected to be more than 1.",
                                 filteredHostSelectionMap.size(), getAffinity(), state.contextId);
-                throw new HostSelectionFilterException(errMsg);
+                throw new HostSelectionFilterException(errMsg, "request.service.affinity.filter.many.hosts",
+                        filteredHostSelectionMap.size(), getAffinity(), state.contextId);
             } else if (hardAfinitiHosts.size() == 1) {
                 return hardAfinitiHosts;
             } else {
@@ -174,31 +172,15 @@ public class ServiceAffinityHostFilter extends BaseAffinityHostFilter {
         final Map<String, AffinityConstraint> affinityConstraints = new HashMap<>(
                 affinities.length);
         for (String name : affinities) {
-            AffinityConstraint constraint = new AffinityConstraint();
-            final boolean anti_affinity = name.startsWith(ANTI_AFFINITY_PREFIX);
-            if (anti_affinity) {
-                name = name.replaceFirst(ANTI_AFFINITY_PREFIX, "");
-                constraint.antiAffinity = true;
-            }
-            if ((affinity && !anti_affinity) || (!affinity && anti_affinity)) {
-                if (name.endsWith(SOFT.getValue())) {
-                    constraint.name = name.replace(SOFT.getValue(), "");
-                    constraint.type = SOFT;
-                    affinityConstraints.put(constraint.name, constraint);
-                } else if (name.endsWith(HARD.getValue())) {
-                    constraint.name = name.replace(HARD.getValue(), "");
-                    constraint.type = HARD;
-                    affinityConstraints.put(constraint.name, constraint);
-                } else {
-                    constraint.name = name;
-                    constraint.type = HARD;
-                    affinityConstraints.put(constraint.name, constraint);
-                }
+            AffinityConstraint constraint = AffinityConstraint.fromString(name);
+            if (affinity == !constraint.antiAffinity) {
+                affinityConstraints.put(constraint.name, constraint);
             }
         }
         return affinityConstraints;
     }
 
+    @Override
     protected void completeWhenNoContainerDescriptionsFound(
             final PlacementHostSelectionTaskState state,
             final Map<String, HostSelection> filteredHostSelectionMap,
@@ -208,7 +190,9 @@ public class ServiceAffinityHostFilter extends BaseAffinityHostFilter {
                 "No container descriptions with %s [%s].",
                 affinityPropertyName, getAffinity());
         if (hasOutgoingAffinities()) {
-            callback.complete(null, new HostSelectionFilterException(errMsg));
+            callback.complete(null, new HostSelectionFilterException(errMsg,
+                    "request.service.affinity.filter.no.container-descriptions",
+                    affinityPropertyName, getAffinity()));
         } else {
             callback.complete(filteredHostSelectionMap, null);
         }

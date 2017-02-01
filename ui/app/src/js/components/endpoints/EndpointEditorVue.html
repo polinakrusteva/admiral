@@ -24,17 +24,19 @@
         @change="onNameChange">
       </text-input>
       <dropdown-input
-        :disabled="model.item.documentSelfLink"
+        :disabled="!!model.item.documentSelfLink"
         :entity="i18n('app.endpoint.typeEntity')"
         :label="i18n('app.endpoint.edit.typeLabel')"
-        :options="supportedEndpointTypes"
+        :options="supportedTypes"
         :required="true"
         :value="convertToObject(model.item.endpointType)"
         @change="onEndpointTypeChange">
       </dropdown-input>
-      <aws-endpoint-editor
-        v-bind:model="model.item"
-        v-if="endpointType === 'aws'"
+      <div
+        v-for="(index, editor) in supportedEditors"
+        v-if="endpointType === supportedTypes[index].id"
+        :is="editor"
+        :model="model.item"
         v-on:change="onPropertiesChange">
       </aws-endpoint-editor>
       <azure-endpoint-editor
@@ -64,6 +66,7 @@
         v-on:change="onPropertiesChange"
         v-on:error="onPropertiesError">
       </vro-endpoint-editor>
+      </div>
     </section>
   </form>
   <div class="inline-edit-toolbar">

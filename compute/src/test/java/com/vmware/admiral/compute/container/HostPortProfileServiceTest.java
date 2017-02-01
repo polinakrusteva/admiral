@@ -108,10 +108,12 @@ public class HostPortProfileServiceTest extends ComputeBaseTest {
         assertTrue(result.reservedPorts.containsKey(new Long(34567)));
 
         request.containerLink = UUID.randomUUID().toString();
-
-        validateIllegalArgument(() -> {
-            patch(result, request, true);
-        }, "Requested port is already allocated");
+        result = patch(profile, request, false);
+        assertEquals(11, result.reservedPorts.size());
+        assertTrue(result.reservedPorts
+                .entrySet()
+                .stream()
+                .anyMatch(p -> p.getKey() == 34567 && request.containerLink.equals(p.getValue())));
     }
 
     @Test
@@ -128,7 +130,7 @@ public class HostPortProfileServiceTest extends ComputeBaseTest {
         request.mode = HostPortProfileService.HostPortProfileReservationRequestMode.ALLOCATE;
         request.additionalHostPortCount = 1;
 
-        validateIllegalArgument(() -> {
+        validateLocalizableException(() -> {
             patch(result, request, true);
         }, "There are no available ports left");
     }

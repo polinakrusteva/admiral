@@ -62,6 +62,7 @@ import com.vmware.admiral.service.common.SslTrustImportService.SslTrustImportReq
 import com.vmware.admiral.service.common.TaskServiceDocument;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.xenon.common.FactoryService;
+import com.vmware.xenon.common.LocalizableValidationException;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
@@ -111,8 +112,9 @@ public class HostContainerListDataCollection extends StatefulService {
             if (initState.documentSelfLink == null
                     || !initState.documentSelfLink
                             .endsWith(DEFAULT_HOST_CONTAINER_LIST_DATA_COLLECTION_ID)) {
-                post.fail(new IllegalArgumentException(
-                        "Only one instance of list containers data collection can be started"));
+                post.fail(new LocalizableValidationException(
+                        "Only one instance of containers data collection can be started",
+                        "compute.container.data-collection.single"));
                 return;
             }
 
@@ -313,7 +315,7 @@ public class HostContainerListDataCollection extends StatefulService {
 
         String containerHostLink = body.containerHostLink;
         if (containerHostLink == null) {
-            logFine("'containerHostLink' is required");
+            logWarning("'containerHostLink' is required");
             op.complete();
             return;
         }
@@ -1149,8 +1151,8 @@ public class HostContainerListDataCollection extends StatefulService {
             if (systemContainerName.equals(SystemContainerDescriptions.AGENT_CONTAINER_NAME)) {
                 descriptionLink = SystemContainerDescriptions.AGENT_CONTAINER_DESCRIPTION_LINK;
             } else {
-                throw new IllegalStateException("Unknown systemContainerName: "
-                        + systemContainerName);
+                throw new LocalizableValidationException("Unknown systemContainerName: "
+                        + systemContainerName, "compute.system-container.name.unknown", new String[] { systemContainerName });
             }
 
             OperationUtil.getDocumentState(this, descriptionLink, ContainerDescription.class,
@@ -1163,6 +1165,10 @@ public class HostContainerListDataCollection extends StatefulService {
                 (ComputeState host) -> {
                     if (ContainerHostUtil.isVicHost(host)) {
                         logInfo("VIC host detected, system containers will not be installed.");
+                        return;
+                    }
+                    if (ContainerHostUtil.isKubernetesHost(host)) {
+                        logInfo("Kubernetes host detected, system containers will not be installed.");
                         return;
                     }
                     createOrRetrieveSystemContainer(containerHostLink, systemContainerName,

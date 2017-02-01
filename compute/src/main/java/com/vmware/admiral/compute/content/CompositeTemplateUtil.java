@@ -13,6 +13,7 @@ package com.vmware.admiral.compute.content;
 
 import static com.vmware.admiral.common.util.AssertUtil.assertNotEmpty;
 import static com.vmware.admiral.common.util.AssertUtil.assertNotNull;
+import static com.vmware.admiral.compute.container.CompositeComponentRegistry.metaByDescriptionLink;
 import static com.vmware.admiral.compute.container.PortBinding.fromDockerPortMapping;
 
 import java.io.IOException;
@@ -45,6 +46,7 @@ import com.vmware.admiral.common.util.YamlMapper;
 import com.vmware.admiral.compute.BindingUtils;
 import com.vmware.admiral.compute.ResourceType;
 import com.vmware.admiral.compute.TemplateSerializationUtils;
+import com.vmware.admiral.compute.container.CompositeComponentRegistry.ComponentMeta;
 import com.vmware.admiral.compute.container.CompositeDescriptionService.CompositeDescription;
 import com.vmware.admiral.compute.container.ContainerDescriptionService.CompositeTemplateContainerDescription;
 import com.vmware.admiral.compute.container.ContainerDescriptionService.ContainerDescription;
@@ -65,6 +67,8 @@ import com.vmware.admiral.compute.content.compose.NetworkExternal;
 import com.vmware.admiral.compute.content.compose.ServiceNetworks;
 import com.vmware.admiral.compute.content.compose.VolumeExternal;
 import com.vmware.photon.controller.model.resources.ResourceState;
+import com.vmware.xenon.common.DeferredResult;
+import com.vmware.xenon.common.LocalizableValidationException;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.Utils;
 
@@ -99,8 +103,9 @@ public class CompositeTemplateUtil {
         try {
             template = YamlMapper.objectMapper().readValue(yaml, CommonDescriptionEntity.class);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException(
-                    "Error processing YAML content: " + e.getOriginalMessage());
+            throw new LocalizableValidationException(
+                    "Error processing YAML content: " + e.getOriginalMessage(),
+                    "compute.template.yaml.content.error", e.getOriginalMessage());
         }
 
         if (DOCKER_COMPOSE_VERSION_2.equals(template.version)
@@ -120,8 +125,9 @@ public class CompositeTemplateUtil {
             entity = YamlMapper.objectMapper().readValue(yaml.trim(),
                     DockerCompose.class);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException(
-                    "Error processing Docker Compose v2 YAML content: " + e.getOriginalMessage());
+            throw new LocalizableValidationException(
+                    "Error processing Docker Compose v2 YAML content: " + e.getOriginalMessage(),
+                    "compute.template.yaml.compose2.error", e.getOriginalMessage());
         }
         sanitizeDockerCompose(entity);
         return entity;
@@ -164,7 +170,8 @@ public class CompositeTemplateUtil {
             Utils.log(CompositeTemplateUtil.class,
                     CompositeTemplateUtil.class.getSimpleName(),
                     Level.INFO, format, e.getMessage());
-            throw new IllegalArgumentException(String.format(format, e.getOriginalMessage()));
+            throw new LocalizableValidationException(String.format(format, e.getOriginalMessage()),
+                    "compute.template.yaml.error", e.getOriginalMessage());
         }
         sanitizeCompositeTemplate(entity, false);
         return entity;
@@ -243,10 +250,13 @@ public class CompositeTemplateUtil {
         }
     }
 
-    public static Map<String, Object> jsonToMap(JsonObject json) {
+    public static Map<String, Object> jsonToMap(JsonElement json) {
         Map<String, Object> retMap = new HashMap<String, Object>();
-        if (json != null) {
-            retMap = toMap(json);
+        if (json != null && json.isJsonObject()) {
+            retMap = toMap((JsonObject) json);
+        } else {
+            Utils.log(CompositeTemplateUtil.class, CompositeTemplateUtil.class.getSimpleName(),
+                    Level.WARNING, "Log configuration is not a valuid JsonObject!");
         }
         return retMap;
     }
@@ -848,6 +858,7 @@ public class CompositeTemplateUtil {
         template.name = description.name;
         template.status = description.status;
         template.properties = description.customProperties;
+        template.bindings = description.bindings;
         return template;
     }
 
@@ -874,11 +885,50 @@ public class CompositeTemplateUtil {
 
         components.forEach((componentName, component) -> {
             if (!yamlLiterals.contains(component.type)) {
-                throw new IllegalArgumentException(String.format(
-                        "Component '%s' has an unsupported type '%s'",
-                        componentName, component.type));
+                String errorMessage = String.format("Component '%s' has an unsupported type '%s'",
+                        componentName, component.type);
+                throw new LocalizableValidationException(errorMessage,
+                        "compute.template.components.unsupported.type",
+                        componentName, component.type);
             }
         });
+    }
+
+    public static DeferredResult<CompositeTemplate> convertCompositeDescriptionToCompositeTemplate(
+            Service service, CompositeDescription compositeDescription) {
+
+        //get each component recursively
+        List<DeferredResult<NestedState>> components = compositeDescription.descriptionLinks
+                .stream()
+                .map(link -> {
+                    ComponentMeta meta = metaByDescriptionLink(link);
+                    return NestedState.get(service, link, meta.descriptionClass);
+                }).collect(Collectors.toList());
+
+        //creat the ComponentTemplate objects
+        return DeferredResult.allOf(components).thenApply(nestedStates -> {
+                    CompositeTemplate template = fromCompositeDescriptionToCompositeTemplate(
+                            compositeDescription);
+                    if (nestedStates == null || nestedStates.isEmpty()) {
+                        return template;
+                    }
+                    template.components = new HashMap<>();
+                    for (int i = 0; i < compositeDescription.descriptionLinks.size(); i++) {
+                        String link = compositeDescription.descriptionLinks.get(i);
+                        NestedState nestedState = nestedStates.get(i);
+
+                        ComponentMeta meta = metaByDescriptionLink(link);
+
+                        ComponentTemplate<?> component = fromDescriptionToComponentTemplate(
+                                nestedState, meta.resourceType);
+                        template.components
+                                .put(((ResourceState) nestedState.object).name,
+                                        component);
+                    }
+                    return template;
+                }
+
+        );
     }
 
     public static <T> boolean isNullOrEmpty(T[] array) {

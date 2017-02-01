@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import com.vmware.admiral.common.ManagementUriParts;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourceState;
+import com.vmware.xenon.common.LocalizableValidationException;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
@@ -160,7 +161,7 @@ public class HostPortProfileService extends StatefulService {
         // First remove all ports, this will remove ports that are not allocated anymore
         releasePorts(state, request);
         // Second mark ports allocated
-        allocateSpecificPorts(state, request, true);
+        allocateSpecificPorts(state, request);
         logInfo("Updating port allocation from [%s] to [%s] for container [%s] and profile [%s]",
                 previousPorts,
                 getAllocatedPorts(state, request.containerLink),
@@ -182,7 +183,7 @@ public class HostPortProfileService extends StatefulService {
     /** Allocate all ports for HostPortProfileReservationRequest. */
     private void allocatePorts(HostPortProfileState state,
                                HostPortProfileReservationRequest request) {
-        allocateSpecificPorts(state, request, false);
+        allocateSpecificPorts(state, request);
         allocateAdditionalPorts(state, request);
 
         logInfo("Allocating ports [%s] for container [%s] and profile [%s].",
@@ -208,9 +209,10 @@ public class HostPortProfileService extends StatefulService {
                 }
             }
             if (allocatedPort == null) {
-                IllegalArgumentException exception =
-                        new IllegalArgumentException(
-                                "Unable to allocate hostPort. There are no available ports left.");
+                LocalizableValidationException exception =
+                        new LocalizableValidationException(
+                                "Unable to allocate hostPort. There are no available ports left.",
+                                "compute.host.port.unavailable");
                 throw exception;
             }
         }
@@ -218,23 +220,12 @@ public class HostPortProfileService extends StatefulService {
 
     /** Allocate specific ports. */
     private void allocateSpecificPorts(HostPortProfileState state,
-                                       HostPortProfileReservationRequest request,
-                                       boolean force) {
+                                       HostPortProfileReservationRequest request) {
         if (request.specificHostPorts == null) {
             return;
         }
 
-        for (long requestedPort : request.specificHostPorts) {
-            // check port is not already allocated
-            if (state.reservedPorts.containsKey(requestedPort) && !force) {
-                IllegalArgumentException exception = new IllegalArgumentException(
-                        "Unable to allocate hostPort. Requested port is already allocated: "
-                                + requestedPort);
-                throw exception;
-            }
-
-            state.reservedPorts.put(requestedPort, request.containerLink);
-        }
+        request.specificHostPorts.forEach(p -> state.reservedPorts.put(p, request.containerLink));
     }
 
     @Override

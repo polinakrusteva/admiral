@@ -11,6 +11,7 @@
 
 package com.vmware.admiral.request.allocation.filter;
 
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -42,6 +43,7 @@ import com.vmware.admiral.compute.container.volume.ContainerVolumeService.Contai
 import com.vmware.admiral.request.allocation.filter.HostSelectionFilter.HostSelection;
 import com.vmware.admiral.request.util.TestRequestStateFactory;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
+import com.vmware.xenon.common.LocalizableValidationException;
 import com.vmware.xenon.common.UriUtils;
 
 public class NamedVolumeAffinityHostFilterTest extends BaseAffinityHostFilterTest {
@@ -212,7 +214,12 @@ public class NamedVolumeAffinityHostFilterTest extends BaseAffinityHostFilterTes
             fail("Expected exception");
         }
 
-        assertThat(e.getMessage(), startsWith("Detected multiple containers sharing local"));
+        if (e instanceof LocalizableValidationException) {
+            LocalizableValidationException le = (LocalizableValidationException) e;
+            assertThat(le.getMessage(), startsWith("Detected multiple containers sharing local"));
+        } else {
+            fail("Expected LocalizableValidationException");
+        }
     }
 
     @Test
@@ -236,7 +243,57 @@ public class NamedVolumeAffinityHostFilterTest extends BaseAffinityHostFilterTes
             fail("Expected exception");
         }
 
-        assertThat(e.getMessage(), startsWith("Unable to place containers sharing local volumes"));
+        if (e instanceof LocalizableValidationException) {
+            LocalizableValidationException le = (LocalizableValidationException) e;
+            assertThat(le.getMessage(), startsWith("Unable to place containers sharing local volumes"));
+        } else {
+            fail("Expected LocalizableValidationException");
+        }
+    }
+
+    @Test
+    public void testChooseSameExternalVolumeHost() throws Throwable {
+        String h1Link = createDockerHostWithVolumeDrivers("custom");
+        String h2Link = createDockerHostWithVolumeDrivers("custom");
+        String h3Link = createDockerHostWithVolumeDrivers("custom");
+
+        // create external volume description
+        ContainerVolumeDescription volumeDesc = createVolumeDescription("ext-vol", "custom");
+        volumeDesc.external = true;
+        doPatch(volumeDesc, volumeDesc.documentSelfLink);
+
+        // create external volume state for each host
+        ContainerVolumeState volume1 = createVolumeState(volumeDesc);
+        volume1.parentLinks = Arrays.asList(h1Link);
+        doPatch(volume1, volume1.documentSelfLink);
+
+        ContainerVolumeState volume2 = createVolumeState(volumeDesc);
+        volume2.parentLinks = Arrays.asList(h2Link);
+        doPatch(volume2, volume2.documentSelfLink);
+
+        ContainerVolumeState volume3 = createVolumeState(volumeDesc);
+        volume3.parentLinks = Arrays.asList(h3Link);
+        doPatch(volume3, volume3.documentSelfLink);
+
+        // create container attached to the external volume
+        ContainerDescription desc1 = createContainerDescription(new String[] { "ext-vol:/tmp" });
+
+        filter = new NamedVolumeAffinityHostFilter(host, desc1);
+        assertTrue(filter.isActive());
+        Map<String, HostSelection> selectedHosts = filter();
+        assertEquals(1, selectedHosts.size());
+        String selectedHostLink = selectedHosts.keySet().iterator().next();
+        assertThat(Arrays.asList(h1Link, h2Link, h3Link), hasItem(selectedHostLink));
+
+        // create another container so that both containers are attached to the same external volume
+        ContainerDescription desc2 = createContainerDescription(new String[] { "ext-vol:/tmp" });
+
+        filter = new NamedVolumeAffinityHostFilter(host, desc2);
+        selectedHosts = filter();
+        assertEquals(1, selectedHosts.size());
+
+        // assert that both containers chose the same host
+        assertEquals(selectedHostLink, selectedHosts.keySet().iterator().next());
     }
 
     private ContainerDescription createContainerDescription(String[] volumes)
@@ -255,9 +312,8 @@ public class NamedVolumeAffinityHostFilterTest extends BaseAffinityHostFilterTes
 
     private ContainerVolumeDescription createVolumeDescription(String name, String driver)
             throws Throwable {
-        ContainerVolumeDescription desc = new ContainerVolumeDescription();
-        desc.documentSelfLink = UUID.randomUUID().toString();
-        desc.name = name;
+        ContainerVolumeDescription desc = TestRequestStateFactory
+                .createContainerVolumeDescription(name);
         desc.driver = driver;
 
         desc = doPost(desc, ContainerVolumeDescriptionService.FACTORY_LINK);
@@ -271,11 +327,14 @@ public class NamedVolumeAffinityHostFilterTest extends BaseAffinityHostFilterTes
             throws Throwable {
         ContainerVolumeState containerVolume = new ContainerVolumeState();
         containerVolume.descriptionLink = desc.documentSelfLink;
-        containerVolume.name = desc.name + UUID.randomUUID().toString();
+        containerVolume.name = (desc.external != null && desc.external) ? desc.name
+                : desc.name + UUID.randomUUID().toString();
         containerVolume.driver = desc.driver;
         containerVolume.compositeComponentLinks = new ArrayList<>();
         containerVolume.compositeComponentLinks.add(UriUtils.buildUriPath(
                 CompositeComponentFactoryService.SELF_LINK, state.contextId));
+        containerVolume.external = desc.external;
+        containerVolume.tenantLinks = desc.tenantLinks;
         containerVolume = doPost(containerVolume, ContainerVolumeService.FACTORY_LINK);
         assertNotNull(containerVolume);
         addForDeletion(containerVolume);

@@ -18,7 +18,6 @@ import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 
 import com.vmware.admiral.closures.services.closure.ClosureInputsDeserializer;
 import com.vmware.admiral.common.util.YamlMapper;
@@ -101,7 +100,7 @@ public class ClosureDescription extends ResourceState {
     @Documentation(description = "Log configuration of execution.")
     @UsageOption(option = PropertyUsageOption.OPTIONAL)
     @JsonDeserialize(using = ClosureLogConfigDeserializer.class)
-    public JsonObject logConfiguration;
+    public JsonElement logConfiguration;
 
     /**
      * Resource constraints to use when executing code snippet. Could be CPU, memory or execution timeout. Optional parameter.
@@ -121,12 +120,12 @@ public class ClosureDescription extends ResourceState {
     public String dependencies;
 
     /**
-     * Id of the placement zone to use. Optional parameter.
+     * Link of the placement to use. Optional parameter.
      *
      */
-    @Documentation(description = "Id of the placement zone to use.")
+    @Documentation(description = "Link to a placement to use.")
     @UsageOption(option = PropertyUsageOption.OPTIONAL)
-    public String placementZoneId;
+    public String placementLink;
 
     /**
      * Notification URL that can be used as Webhook. Optional parameter.

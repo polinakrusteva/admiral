@@ -522,11 +522,6 @@
           "userLinkLabel": "Subscription ID",
           "tenantIdLabel": "Tenant ID"
         },
-        "openstack": {
-          "url": "URL",
-          "domain": "Domain",
-          "project": "Project"
-        },
         "vsphere": {
           "hostNameLabel": "Host name or IP",
           "privateKeyIdLabel": "Username",
@@ -947,7 +942,8 @@
         "descriptionId": "ID",
         "source": "Source",
         "sourceURL": "Source URL",
-        "resources": "Resources"
+        "resources": "Resources",
+        "placement": "Placement"
       },
       "state": {
         "CREATED": "CREATED",
@@ -974,8 +970,8 @@
           "source": "Source code",
           "sourceURL": "Source URL",
           "runtimeTypes": {
-            "nodejs": "Node.js 4.3.0",
-            "python": "Python 3.4.3"
+            "nodejs": "NodeJs 4",
+            "python": "Python 3"
           },
           "logConfigOptionsInputs" : {
             "name": "Name",

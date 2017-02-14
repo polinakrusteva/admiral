@@ -47,6 +47,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.vmware.photon.controller</groupId>
+            <artifactId>photon-vro-adapter</artifactId>
+            <version>${photon.model.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.vmware.admiral.closures</groupId>
             <artifactId>admiral-closure-services</artifactId>
             <version>${project.version}</version>

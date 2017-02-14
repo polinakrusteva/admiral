@@ -495,6 +495,12 @@
           "large": "Large (2 CPU, 8 GB Memory)",
           "xlarge": "X-Large (4 CPU, 16 GB Memory)"
         },
+        "vro": {
+          "small": "Small (1 CPU, 1 GB Memory)",
+          "medium": "Medium (1 CPU, 2 GB Memory)",
+          "large": "Large (2 CPU, 8 GB Memory)",
+          "xlarge": "X-Large (4 CPU, 16 GB Memory)"
+        },
         "nimbus": {
           "small": "Small (1 CPU, 1 GB Memory)"
         }

@@ -34,7 +34,7 @@
     <div class="select">
       <select v-model="instanceType" class="form-control">
         <option v-for="(key, value) in instanceTypes"
-            value="{{key}}" track-by="$index">
+                value="{{key}}" track-by="$index">
           {{getInstanceTypeDescription(key)}}
         </option>
       </select>
@@ -48,37 +48,19 @@
     <div class="select">
       <select v-model="imageType" class="form-control">
         <option v-for="(key, value) in imageTypes"
-            value="{{key}}" track-by="$index">
+                value="{{key}}" track-by="$index">
           {{getImageTypeDescription(key)}}
         </option>
       </select>
     </div>
   </div>
 
-  <div id="cpuCount" class="form-group"
-       v-if="endpoint && endpoint.endpointType === 'vro' && endpoint.customProperties.provider === 'vsphere'">
-    <label class="required">
-      {{i18n("app.host.details.cpu")}}
-    </label>
-    <input class="form-control" v-model="cpu">
-  </div>
-
-  <div id="memory" class="form-group"
-       v-if="endpoint && endpoint.endpointType === 'vro' && endpoint.customProperties.provider === 'vsphere'">
-    <label class="required">
-      {{i18n("app.host.details.memory")}}
-    </label>
-    <input class="form-control" v-model="memory"
-           v-bind:placeholder="i18n('app.host.details.memoryMbPlaceholder')">
-  </div>
-
-  <div id="destination" class="form-group"
-       v-if="endpoint && endpoint.endpointType === 'vsphere'">
+  <div id="destination" class="form-group" v-if="endpoint && endpoint.endpointType === 'vsphere'">
     <label class="required">
       {{i18n('app.host.details.destination')}}
     </label>
     <destination-search class="dropdown-holder" v-bind:resource-pool-link="endpoint.resourcePoolLink"
-        v-on:change="onDestinationChange"></destination-search>
+                        v-on:change="onDestinationChange"></destination-search>
   </div>
 
   <div id="port" class="form-group" v-bind:class="{'hide': endpoint === null || isNimbusEndpoint}">
@@ -97,7 +79,7 @@
     <label>{{i18n("app.host.details.clusterSize")}}</label>
     <div class="clusterSizeInput">
       <action-button v-bind:disabled="clusterSize == 1" name="decrementClusterSize" icon-name="minus"
-                   v-on:click="modifyClusterSize($event, -1)"></action-button>
+                     v-on:click="modifyClusterSize($event, -1)"></action-button>
       <span>{{clusterSize}}</span>
       <action-button name="incrementClusterSize" icon-name="plus"
                      v-on:click="modifyClusterSize($event, 1)"></action-button>
@@ -108,7 +90,7 @@
     <label>{{i18n("app.host.details.tags")}}</label>
     <input class="tags-input">
     <i class="fa fa-question-circle" data-toggle="tooltip" data-placement="left"
-        title="{{i18n ('app.host.details.tagsHint')}}"></i>
+       title="{{i18n ('app.host.details.tagsHint')}}"></i>
   </div>
 
   <div id="customProperties" class="form-group" v-bind:class="{'hide': endpoint === null || isNimbusEndpoint}">

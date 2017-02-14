@@ -334,11 +334,9 @@ services.loadCredentials = function() {
   Explicitly not setting oData filter as it break CAFE -> DCP integration.
   The problem is that nested properties should be filtered by "/"
   (see filter section http://www.odata.org/documentation/odata-version-2-0/uri-conventions/)
-
   customPropertis.scope ne 'SYSTEM' throws in CAFE: System request parameter
   $filter=customProperties.scope ne 'SYSTEM' is not properly formatted. Details:
   Unable to read expression with tokens: [[customProperties], [.], [scope]]
-
   customPropertis/scope ne 'SYSTEM' throws in DCP: DCP error with Http code: [400]...
   it hould be fixed on DCP level, the problem lies in
   com.vmware.xenon.common.ODataTokenizer.tokenize()

@@ -92,7 +92,8 @@ var getSupportedEditors = function() {
   let supportedEditors = [
     'aws-endpoint-editor',
     'azure-endpoint-editor',
-    'vsphere-endpoint-editor'
+    'vsphere-endpoint-editor',
+    'vro-endpoint-editor'
   ];
   if (utils.isNimbusEnabled()) {
     supportedEditors.push('nimbus-endpoint-editor');

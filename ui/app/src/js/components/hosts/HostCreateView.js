@@ -85,6 +85,8 @@ var HostCreateView = Vue.extend({
       endpoint: null,
       instanceType: null,
       imageType: null,
+      cpu: null,
+      memory: null,
       port: constants.COMPUTE.DOCKER_HOST_PORT,
       destination: null,
       clusterSize: 1
@@ -94,7 +96,11 @@ var HostCreateView = Vue.extend({
   computed: {
     buttonsDisabled: function() {
       if (!this.name || !this.endpoint) {
+        console.log('True name or endpoint');
         return true;
+      }
+      if (this.endpoint.endpointType === 'vro') {
+        return false;
       }
       return !this.instanceType || !this.imageType ||
           (this.endpoint.endpointType === 'vsphere' && !this.destination);
@@ -296,12 +302,15 @@ var HostCreateView = Vue.extend({
       let hostDescription = {
         authCredentialsLink: this.credential && this.credential.documentSelfLink,
         name: this.name,
+        cpuCount: this.cpu,
+        totalMemoryBytes: this.memory * 1024 * 1024,
         supportedChildren: ['DOCKER_CONTAINER'],
         customProperties: $.extend(customProperties, {
           __endpointLink: this.endpoint.documentSelfLink,
           __dockerHostPort: parseInt(this.port || constants.COMPUTE.DOCKER_HOST_PORT, 10)
         })
       };
+      console.log(JSON.stringify(hostDescription));
       return $.extend(true, hostDescription, {
         instanceType: this.instanceType,
         customProperties: {

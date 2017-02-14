@@ -38,6 +38,34 @@
         :is="editor"
         :model="model.item"
         v-on:change="onPropertiesChange">
+      </aws-endpoint-editor>
+      <azure-endpoint-editor
+        v-bind:model="model.item"
+        v-if="endpointType === 'azure'"
+        v-on:change="onPropertiesChange">
+      </azure-endpoint-editor>
+      <nimbus-endpoint-editor
+        v-bind:model="model.item"
+        v-if="endpointType === 'nimbus'"
+        v-on:change="onPropertiesChange">
+      </nimbus-endpoint-editor>
+      <openstack-endpoint-editor
+        v-bind:model="model.item"
+        v-if="endpointType === 'openstack'"
+        v-on:change="onPropertiesChange">
+      </openstack-endpoint-editor>
+      <vsphere-endpoint-editor
+        v-bind:model="model.item"
+        v-if="endpointType === 'vsphere'"
+        v-on:change="onPropertiesChange"
+        v-on:error="onPropertiesError">
+      </vsphere-endpoint-editor>
+      <vro-endpoint-editor
+        v-bind:model="model.item"
+        v-if="endpointType === 'vro'"
+        v-on:change="onPropertiesChange"
+        v-on:error="onPropertiesError">
+      </vro-endpoint-editor>
       </div>
     </section>
   </form>
